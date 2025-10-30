@@ -1,0 +1,162 @@
+services:
+  redis:
+    image: redis:latest
+    command: ["redis-server","--appendonly","yes"]
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 2s
+      retries: 20
+    volumes:
+      - redisdata:/data
+
+  zookeeper:
+    image: zookeeper:3.9
+    environment:
+      ZOO_CLIENT_PORT: "2181"
+      ZOO_TICK_TIME: "2000"
+      ZOO_4LW_COMMANDS_WHITELIST: "ruok,stat,srvr,conf,mntr"
+      ZOO_LOG4J_PROP: "INFO,CONSOLE"
+      JVMFLAGS: "-Xms128m -Xmx256m"
+    ports: ["2181:2181"]
+    healthcheck:
+      test: ["CMD-SHELL","exec 3<>/dev/tcp/127.0.0.1/2181 && printf 'ruok\n' >&3 && IFS= read -r -t 2 line <&3 && echo \"$$line\" | grep -q imok"]
+      interval: 3s
+      timeout: 2s
+      start_period: 5s
+      retries: 10
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options: {max-size: "10m", max-file: "3"}
+
+  kafka:
+    image: confluentinc/cp-kafka:7.7.1
+    hostname: kafka
+    depends_on:
+      zookeeper:
+        condition: service_started
+    environment:
+      KAFKA_BROKER_ID: "1"
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+      KAFKA_HEAP_OPTS: "-Xms256m -Xmx512m"
+    ports: ["9092:9092"]
+    healthcheck:
+      test: ["CMD-SHELL","kafka-topics --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+
+  fraud-service:
+    build: .
+    container_name: fraud-service
+    environment:
+      - MODEL_PATH=/app/artifacts/model_v1.xgb
+      - MODEL_VERSION=v1
+      - REDIS_URL=redis://redis:6379/0
+      - KAFKA_BOOTSTRAP=kafka:9092
+      - KAFKA_IN_TOPIC=transactions
+      - KAFKA_OUT_TOPIC=decisions
+      - CACHE_TTL_SECONDS=300
+      - SERVICE_NAME=fraud-service
+      - PROMETHEUS_PORT=8001
+    command: ["python","service.py"]
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    ports:
+      - "8080:8080"
+      - "8001:8001"
+    volumes:
+      - artifacts:/app/artifacts
+      - data:/app/data
+      - monitor:/app/monitor
+
+  trainer:
+    build: .
+    container_name: fraud-trainer
+    depends_on:
+      kafka:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    command: /bin/sh -c "python data/make_synth.py && python train.py"
+    volumes:
+      - artifacts:/app/artifacts
+      - data:/app/data
+      - monitor:/app/monitor
+
+  stream-consumer:
+    build: .
+    container_name: fraud-consumer
+    environment:
+      - KAFKA_BOOTSTRAP=kafka:9092
+      - KAFKA_IN_TOPIC=transactions
+      - KAFKA_OUT_TOPIC=decisions
+    depends_on:
+      kafka:
+        condition: service_healthy
+      fraud-service:
+        condition: service_started
+    command: ["python","consumer.py"]
+    volumes:
+      - artifacts:/app/artifacts
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    ports:
+      - "9090:9090"
+    depends_on:
+      fraud-service:
+        condition: service_started
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      prometheus:
+        condition: service_started
+
+volumes:
+  artifacts:
+  data:
+  monitor:
+  redisdata:
+  zkdata:
+  zkdatalog:
+  prometheus-data:
+  grafana-data:

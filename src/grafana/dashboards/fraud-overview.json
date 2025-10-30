@@ -1,0 +1,90 @@
+{
+    "id": null,
+    "uid": "fraud-overview",
+    "title": "Fraud Service Overview",
+    "timezone": "browser",
+    "schemaVersion": 39,
+    "version": 1,
+    "refresh": "10s",
+    "panels": [
+        {
+            "type": "stat",
+            "title": "Requests (rate/1m)",
+            "gridPos": {
+                "x": 0,
+                "y": 0,
+                "w": 8,
+                "h": 4
+            },
+            "targets": [
+                {
+                    "expr": "sum(rate(fraud_requests_total[1m]))",
+                    "legendFormat": "rps"
+                }
+            ]
+        },
+        {
+            "type": "timeseries",
+            "title": "Latency p50/p90/p99 (ms)",
+            "gridPos": {
+                "x": 8,
+                "y": 0,
+                "w": 16,
+                "h": 8
+            },
+            "targets": [
+                {
+                    "expr": "histogram_quantile(0.50, sum(rate(fraud_latency_ms_bucket[5m])) by (le))",
+                    "legendFormat": "p50"
+                },
+                {
+                    "expr": "histogram_quantile(0.90, sum(rate(fraud_latency_ms_bucket[5m])) by (le))",
+                    "legendFormat": "p90"
+                },
+                {
+                    "expr": "histogram_quantile(0.99, sum(rate(fraud_latency_ms_bucket[5m])) by (le))",
+                    "legendFormat": "p99"
+                }
+            ]
+        },
+        {
+            "type": "timeseries",
+            "title": "Cache Hits vs Misses",
+            "gridPos": {
+                "x": 0,
+                "y": 4,
+                "w": 12,
+                "h": 8
+            },
+            "targets": [
+                {
+                    "expr": "sum(rate(fraud_cache_hits_total[1m]))",
+                    "legendFormat": "hits"
+                },
+                {
+                    "expr": "sum(rate(fraud_cache_miss_total[1m]))",
+                    "legendFormat": "misses"
+                }
+            ]
+        },
+        {
+            "type": "stat",
+            "title": "Model Loaded",
+            "gridPos": {
+                "x": 12,
+                "y": 4,
+                "w": 4,
+                "h": 4
+            },
+            "targets": [
+                {
+                    "expr": "max(fraud_model_ready)",
+                    "legendFormat": "ready"
+                }
+            ]
+        }
+    ],
+    "templating": {
+        "list": []
+    }
+}
