@@ -1,0 +1,116 @@
+{
+	"info": {
+		"_postman_id": "422713a6-9d3e-4efb-8149-5630ce7a7324",
+		"name": "xgboost  fraud ml project",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "XGBoost Trained Model Test ",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"request_id\":\"txn_12345\",\"account_id\":\"acct_424\",\"merchant_category\":\"electronics\",\"amount\":24.99,\"device_trust_score\":0.1,\"ip_risk_score\":0.35,\"acct_age_days\":100,\"txns_last_5m\":45,\"declines_last_24h\":0,\"chargebacks_90d\":0}"
+				},
+				"url": {
+					"raw": "http://localhost:8080/score",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"score"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "XGBoost Trained Model Test  2",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"request_id\":\"txn_12345\",\"account_id\":\"acct_424\",\"merchant_category\":\"electronics\",\"amount\":24.99,\"device_trust_score\":0.1,\"ip_risk_score\":0.35,\"acct_age_days\":100,\"txns_last_5m\":45,\"declines_last_24h\":0,\"chargebacks_90d\":0}"
+						},
+						"url": {
+							"raw": "http://localhost:8080/score",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"score"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "date",
+							"value": "Thu, 30 Oct 2025 17:18:04 GMT"
+						},
+						{
+							"key": "server",
+							"value": "uvicorn"
+						},
+						{
+							"key": "content-length",
+							"value": "121"
+						},
+						{
+							"key": "content-type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"request_id\": \"txn_12345\",\n    \"model_version\": \"v1\",\n    \"action\": \"review\",\n    \"score\": 0.75495,\n    \"latency_ms\": 106,\n    \"reasons\": [\n        \"model:v1\"\n    ]\n}"
+				}
+			]
+		},
+		{
+			"name": "XGBoost Trained Model Test ",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"request_id\":\"txn_12345\",\"account_id\":\"acct_424\",\"merchant_category\":\"electronics\",\"amount\":24.99,\"device_trust_score\":0.1,\"ip_risk_score\":0.35,\"acct_age_days\":100,\"txns_last_5m\":45,\"declines_last_24h\":0,\"chargebacks_90d\":0}"
+				},
+				"url": {
+					"raw": "http://localhost:8080/score",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"score"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
