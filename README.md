@@ -1,4 +1,4 @@
-```markdown
+
 # Fraud-RT: Real-Time Fraud Detection with Kafka, Redis, and XGBoost
 
 This project is a **real-time fraud detection pipeline** using:
