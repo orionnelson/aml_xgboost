@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 rng = np.random.default_rng(42)
-N = 5000
+N = 1_000_000
 
 merchant_categories = [
     "electronics","groceries","fuel","travel","luxury","restaurants",
@@ -12,7 +12,11 @@ merchant_categories = [
 
 def simulate_row():
     mc = rng.choice(merchant_categories, p=[0.12,0.18,0.07,0.06,0.04,0.14,0.05,0.08,0.12,0.06,0.04,0.04])
-    amount = np.round(rng.gamma(2.0, 60.0), 2)
+    amount = float(np.round(rng.choice([
+        rng.gamma(1.5, 20.0),      # low cluster
+        rng.gamma(2.0, 60.0),      # mid cluster
+        rng.gamma(3.0, 300.0),     # high cluster: expands right tail into 600–2000+ region
+    ], p=[0.45, 0.40, 0.15]), 2))
     acct_age_days = rng.integers(1, 3650)
     device_trust = np.clip(rng.normal(0.65, 0.15), 0, 1)
     ip_risk = np.clip(rng.beta(1.5, 6.0), 0, 1)
@@ -31,7 +35,7 @@ def simulate_row():
         + (0.5 if mc=="gaming" and tx5m>3 else 0.0)
     )
     p = 1/(1+np.exp(-logits))
-    is_fraud = rng.binomial(1, np.clip(p, 0.01, 0.7))
+    is_fraud = rng.binomial(1, np.clip(p, 0.01, 0.99))
     return dict(
         merchant_category=mc,
         amount=float(amount),
