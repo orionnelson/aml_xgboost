@@ -89,6 +89,12 @@ def load_dataset():
 # ----------------------------
 # Constraints
 # ----------------------------
+def _amount_category_interactions(feature_names):
+    """Create per-tree cliques pairing amount with each one-hot category."""
+    cats = [f for f in feature_names if f.startswith("cat_")]
+    return [["amount", c] for c in cats]
+
+
 def _monotone_vector(feature_names):
     base_dir = {
         "amount": +1,
@@ -110,7 +116,7 @@ def audit_amount_category_interactions(booster: xgb.Booster) -> dict:
     This indicates the model can express amount×category interaction paths.
     """
     try:
-        df_trees = xgb.plotting.trees_to_dataframe(booster)
+        df_trees = booster.trees_to_dataframe()
     except Exception as e:
         log.warning("trees_to_dataframe failed: %s", e)
         return {}
@@ -152,6 +158,7 @@ def train():
 
     feature_names = REALTIME_FEATURES
     monotone = _monotone_vector(feature_names)
+    interactions = _amount_category_interactions(feature_names)
 
     params = {
         "objective": "binary:logistic",
@@ -166,6 +173,7 @@ def train():
         "scale_pos_weight": scale_pos_weight,
         "tree_method": "hist",
         "max_bin": 256,
+        "interaction_constraints": interactions, 
         "monotone_constraints": monotone,
         "seed": 42,
     }
@@ -177,9 +185,9 @@ def train():
     bst = xgb.train(
         params,
         dtr,
-        num_boost_round=2000,
+        num_boost_round=4000,
         evals=[(dte, "val")],
-        early_stopping_rounds=100,
+        early_stopping_rounds=200,
         verbose_eval=False,
     )
     best_it = int(getattr(bst, "best_iteration", 0))
