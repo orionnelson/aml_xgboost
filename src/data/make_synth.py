@@ -32,6 +32,7 @@ def simulate_row():
         + 0.55*declines24h
         + 0.9*chbk90d
         + (0.8 if mc in {"luxury","electronics","travel"} and amount>800 else 0.0)
+        + (0.9 if (mc in {"electronics"}) and (amount > 250.0) else 0.0)
         + (0.5 if mc=="gaming" and tx5m>3 else 0.0)
     )
     p = 1/(1+np.exp(-logits))

@@ -43,7 +43,7 @@ FEATURE_DEFAULT_GRID = {
 
 SIMILAR_REF = dict(
     merchant_category="electronics",
-    amount=1000,
+    amount=800.0,
     device_trust_score=0.2,
     ip_risk_score=0.6,
     acct_age_days=100.0,
@@ -126,6 +126,7 @@ def simulator_truth_logit(row: Dict) -> float:
         + 0.55*declines24h
         + 0.9*chbk90d
         + (0.8 if (mc in {"luxury","electronics","travel"}) and (amount > 800.0) else 0.0)
+        + (0.9 if (mc in {"electronics"}) and (amount > 250.0) else 0.0)
         + (0.5 if (mc == "gaming") and (tx5m > 3.0) else 0.0)
     )
     return logits
@@ -138,7 +139,7 @@ def scatter_empirical_points(
     csv_path="data/historical3.csv",
     ref: Optional[Dict] = None,
     atol: Optional[Dict] = None,
-    max_rows: Optional[int] = 200,
+    max_rows: Optional[int] = 2000,
     shuffle: bool = True,
 ):
     """
@@ -310,7 +311,7 @@ def run_all_graphs(
     model_path: Optional[str] = None,
 ) -> pd.DataFrame:
     if categories is None:
-        categories = ["electronics", "luxury", "groceries"]
+        categories = ["electronics", "luxury", "groceries","gaming"]
     start, stop, num = _resolve_grid(feature, grid)
     values = np.linspace(start, stop, int(num))
     fixed = Fixed()
@@ -333,7 +334,7 @@ def main():
     ap.add_argument("--base-url", default=DEFAULT_BASE_URL)
     ap.add_argument("--feature", default="amount",
                     choices=["amount","ip_risk_score","device_trust_score","acct_age_days","txns_last_5m","declines_last_24h","chargebacks_90d"])
-    ap.add_argument("--categories", nargs="*", default=["electronics", "luxury", "groceries"])
+    ap.add_argument("--categories", nargs="*", default=["electronics", "luxury", "groceries", "gaming"])
     ap.add_argument("--grid", nargs=3, type=float, default=[0.0, 2000.0, 101.0])
     ap.add_argument("--static", action="store_true")
     ap.add_argument("--model-path", default=os.getenv("MODEL_PATH", "artifacts/model_v1.xgb"))

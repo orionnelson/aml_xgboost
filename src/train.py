@@ -89,10 +89,11 @@ def load_dataset():
 # ----------------------------
 # Constraints
 # ----------------------------
-def _amount_category_interactions(feature_names):
-    """Create per-tree cliques pairing amount with each one-hot category."""
+def _pair_category_interactions(feature_names, var_name: str):
+    """Create per-tree cliques pairing `var_name` with each one-hot category."""
     cats = [f for f in feature_names if f.startswith("cat_")]
-    return [["amount", c] for c in cats]
+    return [[var_name, c] for c in cats]
+
 
 
 def _monotone_vector(feature_names):
@@ -110,10 +111,10 @@ def _monotone_vector(feature_names):
 # ----------------------------
 # Interaction audit (amount × category)
 # ----------------------------
-def audit_amount_category_interactions(booster: xgb.Booster) -> dict:
+def audit_var_category_interactions(booster: xgb.Booster, var_name: str) -> dict:
     """
-    Count trees where 'amount' and any 'cat_*' both appear.
-    This indicates the model can express amount×category interaction paths.
+    Count trees where `var_name` and any 'cat_*' both appear.
+    Indicates the model can express var×category interaction paths.
     """
     try:
         df_trees = booster.trees_to_dataframe()
@@ -121,11 +122,12 @@ def audit_amount_category_interactions(booster: xgb.Booster) -> dict:
         log.warning("trees_to_dataframe failed: %s", e)
         return {}
 
-    trees_with_amount = set(df_trees.loc[df_trees.Feature == "amount", "Tree"])
+    trees_with_var = set(df_trees.loc[df_trees.Feature == var_name, "Tree"])
     df_cat = df_trees[df_trees.Feature.str.startswith("cat_", na=False)]
     trees_with_cat = set(df_cat["Tree"])
-    overlap = trees_with_amount & trees_with_cat
+    overlap = trees_with_var & trees_with_cat
 
+    from collections import defaultdict
     cat_counts = defaultdict(int)
     for t in overlap:
         for c in df_cat.loc[df_cat.Tree == t, "Feature"].unique().tolist():
@@ -133,11 +135,12 @@ def audit_amount_category_interactions(booster: xgb.Booster) -> dict:
 
     top = sorted(cat_counts.items(), key=lambda kv: kv[1], reverse=True)[:8]
     out = {
+        "var": var_name,
         "n_trees": int(df_trees.Tree.nunique()),
-        "trees_with_amount": int(len(trees_with_amount)),
+        "trees_with_var": int(len(trees_with_var)),
         "trees_with_category": int(len(trees_with_cat)),
         "trees_with_both": int(len(overlap)),
-        "top_amount_x_category": top,
+        "top_var_x_category": top,
     }
     log.info("interaction_audit %s", json.dumps(out))
     return out
@@ -158,8 +161,7 @@ def train():
 
     feature_names = REALTIME_FEATURES
     monotone = _monotone_vector(feature_names)
-    interactions = _amount_category_interactions(feature_names)
-
+    interactions = _pair_category_interactions(feature_names,"amount") + _pair_category_interactions(feature_names, "txns_last_5m")
     params = {
         "objective": "binary:logistic",
         "eval_metric": ["auc", "logloss", "aucpr"],
@@ -232,7 +234,8 @@ def train():
     log.info("feature_importance_saved %s", FI_JSON.name)
 
     # Interaction audit
-    interaction = audit_amount_category_interactions(bst)
+    audit_amt   = audit_var_category_interactions(bst, "amount")
+    audit_txn5m = audit_var_category_interactions(bst, "txns_last_5m")
 
     # Spec
     spec = {
@@ -249,7 +252,10 @@ def train():
             "class_pos_rate_train": float(pos / (pos + neg)),
             "scale_pos_weight": float(scale_pos_weight),
         },
-        "interaction_audit": interaction,
+        "interaction_audit": {
+            "amount_x_category": audit_amt,
+            "txns5m_x_category": audit_txn5m
+        },
         "model_version": "v1",
         "monotone_constraints": _monotone_vector(feature_names),
         "base_features": BASE_FEATURES,
