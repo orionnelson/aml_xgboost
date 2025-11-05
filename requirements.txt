@@ -10,3 +10,6 @@ pydantic-settings==2.6.1
 pandas==2.2.3
 pyarrow==17.0.0
 scikit-learn==1.5.2
+pytest
+requests
+matplotlib
