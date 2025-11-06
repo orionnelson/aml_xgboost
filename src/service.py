@@ -181,12 +181,7 @@ def score(txn: Txn):
         return cached
     CACHE_MISS.inc()
 
-    fkey = f"features:{txn.account_id}"
-    hot = cache_get(fkey) or {}
-    if not hot:
-        CACHE_MISS.inc()
-
-    raw = {**txn.model_dump(), **hot}
+    raw = txn.model_dump()
     try:
         X = build_vector(raw)
     except Exception as e:
