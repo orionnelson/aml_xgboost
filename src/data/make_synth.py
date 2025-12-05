@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 rng = np.random.default_rng(42)
-N = 1_000_000
+N = 500_000
 
 merchant_categories = [
     "electronics","groceries","fuel","travel","luxury","restaurants",
