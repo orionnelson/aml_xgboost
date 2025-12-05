@@ -1,9 +1,9 @@
 from pathlib import Path
 import numpy as np
 import pandas as pd
-
+import os
 rng = np.random.default_rng(42)
-N = 500_000
+N = int(os.getenv("DATASET_SIZE", 500_000))
 
 merchant_categories = [
     "electronics","groceries","fuel","travel","luxury","restaurants",
