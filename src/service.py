@@ -47,7 +47,7 @@ AMT_PREFIX = SPEC.get("amount_bucket_prefix", "amt_bin_")
 CAL_META = SPEC.get("calibrator", {}) or {}
 
 # ----------------- Load model + calibrator -----------------
-booster = None
+booster : Optional[xgb.Booster] = None
 calibrator = None
 
 try:
@@ -187,7 +187,7 @@ def score(txn: Txn):
     except Exception as e:
         LAT_MS.observe((time.perf_counter() - t0) * 1000.0)
         raise HTTPException(status_code=500, detail=f"feature_build_failed:{type(e).__name__}")
-
+    fkey = f"txn_raw:{txn.request_id}"
     try:
         rds.setex(fkey, settings.cache_ttl_seconds, json.dumps(raw))
     except Exception:
